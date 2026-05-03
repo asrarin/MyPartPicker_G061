@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}403 Forbidden — MyPartPicker{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="empty-state mt-5">
+        <i class="bi bi-shield-x d-block" style="font-size:4rem;color:#dc2626;opacity:0.7;"></i>
+        <h2 class="fw-bold" style="color:var(--primary);">403 — Access Denied</h2>
+        <p>You do not have permission to view this page.</p>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg"><i class="bi bi-house me-2"></i>Go Home</a>
+    </div>
+</div>
+{% endblock %}
