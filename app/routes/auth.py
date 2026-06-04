@@ -1,61 +1,12 @@
-<<<<<<< HEAD
-def check_compatibility(cpu, gpu, ram, motherboard, storage, psu, case):
-    errors = []
-    total_power = 50  # Base system overhead
-
-    # Rule 1: CPU socket vs Motherboard socket
-    if cpu and motherboard:
-        if cpu.socket != motherboard.socket:
-            errors.append(
-                f'CPU/Motherboard socket mismatch: {cpu.name} uses {cpu.socket} '
-                f'but {motherboard.name} supports {motherboard.socket}.'
-            )
-
-    # Rule 2: RAM type vs Motherboard RAM support
-    if ram and motherboard:
-        if ram.ram_type != motherboard.ram_type:
-            errors.append(
-                f'RAM type mismatch: {ram.name} is {ram.ram_type} but '
-                f'{motherboard.name} supports {motherboard.ram_type}.'
-            )
-
-    # Rule 3: PSU wattage vs total system power draw
-    if cpu and cpu.power_draw:
-        total_power += cpu.power_draw
-    if gpu and gpu.power_draw:
-        total_power += gpu.power_draw
-    if psu:
-        if psu.wattage < total_power:
-            errors.append(
-                f'PSU too weak: System needs ~{total_power}W but '
-                f'{psu.name} only provides {psu.wattage}W.'
-            )
-
-    # Rule 4: Case form factor vs Motherboard form factor
-    fits = {'ATX': ['ATX'], 'mATX': ['ATX', 'mATX'], 'ITX': ['ATX', 'mATX', 'ITX']}
-    if case and motherboard and motherboard.form_factor and case.form_factor:
-        if case.form_factor not in fits.get(motherboard.form_factor, []):
-            errors.append(
-                f'Form factor mismatch: {case.name} ({case.form_factor}) does not '
-                f'fit {motherboard.name} ({motherboard.form_factor}).'
-            )
-
-    return {
-        'is_compatible': len(errors) == 0,
-        'errors': errors,
-        'total_power': total_power
-    }
-=======
-# app/routes/auth.py
+from functools import wraps
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
+from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.models import User
-from functools import wraps
-from flask import abort
 
 auth = Blueprint('auth', __name__)
 
-# ── ADMIN DECORATOR (used by admin routes) ──
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -64,48 +15,84 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# ── REGISTER ──
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('auth.profile'))
     if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
+        username         = request.form.get('username', '').strip()
+        email            = request.form.get('email', '').strip().lower()
+        password         = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        if not username or not email or not password:
+            flash('All fields are required.', 'danger')
+            return redirect(url_for('auth.register'))
+        if len(username) < 3:
+            flash('Username must be at least 3 characters.', 'danger')
+            return redirect(url_for('auth.register'))
+        if len(password) < 6:
+            flash('Password must be at least 6 characters.', 'danger')
+            return redirect(url_for('auth.register'))
+        if password != confirm_password:
+            flash('Passwords do not match.', 'danger')
+            return redirect(url_for('auth.register'))
         if User.query.filter_by(email=email).first():
-            flash('Email already registered.', 'danger')
+            flash('An account with that email already exists.', 'danger')
+            return redirect(url_for('auth.register'))
+        if User.query.filter_by(username=username).first():
+            flash('That username is already taken.', 'danger')
             return redirect(url_for('auth.register'))
         hashed = generate_password_hash(password)
-        db.session.add(User(username=username, email=email, password=hashed))
+        new_user = User(username=username, email=email, password=hashed)
+        db.session.add(new_user)
         db.session.commit()
         flash('Account created! Please log in.', 'success')
         return redirect(url_for('auth.login'))
     return render_template('auth/register.html')
 
-# ── LOGIN ──
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('auth.profile'))
     if request.method == 'POST':
-        user = User.query.filter_by(email=request.form.get('email')).first()
-        if user and check_password_hash(user.password, request.form.get('password')):
+        email    = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password, password):
             login_user(user)
-            return redirect(url_for('parts.catalogue'))
+            flash(f'Welcome back, {user.username}!', 'success')
+            return redirect(url_for('auth.profile'))
         flash('Invalid email or password.', 'danger')
     return render_template('auth/login.html')
 
-# ── LOGOUT ──
 @auth.route('/logout')
 @login_required
 def logout():
     logout_user()
+    flash('You have been logged out.', 'info')
     return redirect(url_for('auth.login'))
 
-# ── PROFILE ──
 @auth.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
     if request.method == 'POST':
-        current_user.username = request.form.get('username')
+        username = request.form.get('username', '').strip()
+        if not username or len(username) < 3:
+            flash('Username must be at least 3 characters.', 'danger')
+            return redirect(url_for('auth.profile'))
+        existing = User.query.filter_by(username=username).first()
+        if existing and existing.id != current_user.id:
+            flash('That username is already taken.', 'danger')
+            return redirect(url_for('auth.profile'))
+        current_user.username = username
         db.session.commit()
-        flash('Profile updated.', 'success')
+        flash('Profile updated!', 'success')
     return render_template('auth/profile.html')
->>>>>>> 717a1d73ff0f9b04c8166eb1af232afb821243ee
+
+@auth.app_errorhandler(403)
+def forbidden(e):
+    return render_template('errors/403.html'), 403
+
+@auth.app_errorhandler(404)
+def not_found(e):
+    return render_template('errors/404.html'), 404
