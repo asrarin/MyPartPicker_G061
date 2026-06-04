@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}My Saved Builds — MyPartPicker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="bi bi-bookmark me-2"></i> My Saved Builds</h1>
+            <p>All your PC builds in one place</p>
+        </div>
+        <a href="{{ url_for('builds.builder') }}" class="btn btn-light fw-semibold">
+            <i class="bi bi-plus-lg me-2"></i> New Build
+        </a>
+    </div>
+</div>
+
+<div class="container">
+
+    {% if builds %}
+    <div class="row g-4">
+        {% for build in builds %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <!-- Build Header -->
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="text-truncate" style="max-width: 160px;">
+                        <i class="bi bi-pc-display me-2"></i>{{ build.name }}
+                    </span>
+                    {% if build.is_compatible %}
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle me-1"></i> Compatible
+                    </span>
+                    {% else %}
+                    <span class="badge bg-danger">
+                        <i class="bi bi-x-circle me-1"></i> Issues
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="card-body d-flex flex-column p-3">
+
+                    <!-- Parts List -->
+                    <ul class="list-unstyled small mb-3" style="flex-grow: 1;">
+                        {% set part_ids = {
+                            'CPU': build.cpu_id,
+                            'GPU': build.gpu_id,
+                            'RAM': build.ram_id,
+                            'Motherboard': build.motherboard_id,
+                            'Storage': build.storage_id,
+                            'PSU': build.psu_id,
+                            'Case': build.case_id
+                        } %}
+                        {% set icons = {
+                            'CPU': 'cpu',
+                            'GPU': 'gpu-card',
+                            'RAM': 'memory',
+                            'Motherboard': 'motherboard',
+                            'Storage': 'device-hdd',
+                            'PSU': 'lightning-charge',
+                            'Case': 'box'
+                        } %}
+
+                        {% for label, pid in part_ids.items() %}
+                        <li class="d-flex justify-content-between align-items-start mb-1 pb-1"
+                            style="border-bottom: 1px solid #f3f4f6;">
+                            <span class="text-muted" style="min-width: 90px;">
+                                <i class="bi bi-{{ icons[label] }} me-1"></i>{{ label }}
+                            </span>
+                            <span class="text-end text-truncate ms-2"
+                                  style="max-width: 130px; color: #111827;">
+                                {% if pid %}
+                                    {{ pid }}  {# In real app: query Part by pid and show part.name #}
+                                    {# Use: Part.query.get(pid).name in the route and pass part objects #}
+                                {% else %}
+                                    <span class="text-muted fst-italic">Not selected</span>
+                                {% endif %}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                    <!-- Cost & Date -->
+                    <div class="d-flex justify-content-between align-items-center mb-3 pt-1">
+                        <div>
+                            <span class="price-tag">RM {{ '%.2f'|format(build.total_cost) }}</span>
+                            <br>
+                            <span class="text-muted" style="font-size: 0.75rem;">
+                                <i class="bi bi-calendar3 me-1"></i>
+                                {{ build.created_at.strftime('%d %b %Y') }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('builds.builder') }}"
+                           class="btn btn-outline-primary btn-sm flex-fill">
+                            <i class="bi bi-pencil me-1"></i> Edit
+                        </a>
+                        <form method="POST"
+                              action="{{ url_for('builds.delete_build', build_id=build.id) }}"
+                              onsubmit="return confirm('Delete this build? This cannot be undone.');">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <i class="bi bi-bookmark d-block"></i>
+        <h5 class="fw-semibold">No saved builds yet</h5>
+        <p>Build your first PC and save it to see it here.</p>
+        <a href="{{ url_for('builds.builder') }}" class="btn btn-primary btn-lg">
+            <i class="bi bi-pc-display me-2"></i> Start Building
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
