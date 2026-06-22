@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block title %}Build a PC — MyPartPicker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1><i class="bi bi-pc-display me-2"></i> PC Builder</h1>
+        <p>Select one part per category, then check compatibility</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row g-4">
+
+        <!-- Left: Part Selection Form -->
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-list-check me-2"></i> Select Your Components
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('builds.builder') }}" id="builderForm">
+
+                        {% set icons = {
+                            'CPU': 'cpu',
+                            'GPU': 'gpu-card',
+                            'RAM': 'memory',
+                            'Motherboard': 'motherboard',
+                            'Storage': 'device-hdd',
+                            'PSU': 'lightning-charge',
+                            'Case': 'box'
+                        } %}
+
+                        {% for category, part_list in parts_by_category.items() %}
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold d-flex align-items-center gap-2">
+                                <i class="bi bi-{{ icons[category] }}"
+                                   style="color: var(--primary); font-size: 1.1rem;"></i>
+                                {{ category }}
+                            </label>
+                            <select class="form-select" name="{{ category.lower().replace(' ','_') }}_id"
+                                    onchange="updateSummary()">
+                                <option value="">— Select a {{ category }} —</option>
+                                {% for part in part_list %}
+                                <option value="{{ part.id }}"
+                                    data-price="{{ part.price }}"
+                                    data-name="{{ part.name }}"
+                                    {% if selections is defined and selections[category.lower()] and selections[category.lower()].id == part.id %}
+                                        selected
+                                    {% endif %}>
+                                    {{ part.name }} — RM {{ '%.2f'|format(part.price) }} ({{ part.retailer }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Build Name -->
+                        <div class="mb-4 pt-2" style="border-top: 1px solid #e5e7eb;">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-bookmark me-1"></i> Build Name
+                            </label>
+                            <input type="text" class="form-control" name="build_name"
+                                   placeholder='e.g. "Budget Gaming Rig" or "Study PC"'
+                                   value="My Build">
+                            <div class="form-text">Give your build a name before saving.</div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" name="check" class="btn btn-primary flex-fill btn-lg">
+                                <i class="bi bi-shield-check me-2"></i> Check Compatibility
+                            </button>
+                            <button type="submit" name="save" class="btn btn-success flex-fill btn-lg">
+                                <i class="bi bi-floppy me-2"></i> Save Build
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Summary + Results -->
+        <div class="col-lg-5">
+
+            <!-- Live Cost Summary -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="bi bi-calculator me-2"></i> Cost Summary
+                </div>
+                <div class="card-body p-3">
+                    <div id="summaryList">
+                        <p class="text-muted small text-center py-2">
+                            Select parts to see your cost summary
+                        </p>
+                    </div>
+                    <div style="border-top: 2px solid var(--primary); margin-top: 0.5rem; padding-top: 0.5rem;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold" style="color: var(--primary);">Estimated Total</span>
+                            <span class="price-tag" id="totalCost">RM 0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compatibility Results (shown after form submit) -->
+            {% if result is defined %}
+            <div class="card">
+                <div class="card-header"
+                     style="background-color: {{ '#16a34a' if result.is_compatible else '#dc2626' }};">
+                    <i class="bi bi-{{ 'check-circle' if result.is_compatible else 'x-circle' }} me-2"></i>
+                    Compatibility Result
+                </div>
+                <div class="card-body p-3">
+                    {% if result.is_compatible %}
+                    <div class="compat-pass mb-3">
+                        <p class="fw-bold text-success mb-1">
+                            <i class="bi bi-check-circle-fill me-2"></i> All parts are compatible!
+                        </p>
+                        <p class="mb-0 small">Your build passed all compatibility checks.</p>
+                    </div>
+                    {% else %}
+                    <div class="compat-fail mb-3">
+                        <p class="fw-bold text-danger mb-2">
+                            <i class="bi bi-x-circle-fill me-2"></i>
+                            {{ result.errors|length }} compatibility issue{{ 's' if result.errors|length > 1 }}
+                        </p>
+                        <ul class="mb-0 small ps-3">
+                            {% for error in result.errors %}
+                            <li class="mb-1">{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if result.total_power > 0 %}
+                    <div class="small text-muted">
+                        <i class="bi bi-lightning me-1"></i>
+                        Estimated power draw: <strong>{{ result.total_power }}W</strong>
+                    </div>
+                    {% endif %}
+
+                    {% if total_cost is defined and total_cost > 0 %}
+                    <div class="mt-3 p-3 rounded" style="background: #f0f4f9;">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold" style="color: var(--primary);">Build Total</span>
+                            <span class="price-tag">RM {{ '%.2f'|format(total_cost) }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <!-- Placeholder before check -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-shield-check me-2"></i> Compatibility Check
+                </div>
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-shield" style="font-size: 3rem; color: #d1d5db;"></i>
+                    <p class="text-muted mt-2 mb-0">
+                        Select your parts and click<br>
+                        <strong>Check Compatibility</strong> to validate your build.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Tips -->
+            <div class="card mt-3">
+                <div class="card-body p-3 small">
+                    <p class="fw-semibold mb-2" style="color: var(--primary);">
+                        <i class="bi bi-lightbulb me-1"></i> Compatibility Rules Checked
+                    </p>
+                    <ul class="mb-0 text-muted ps-3">
+                        <li>CPU socket must match motherboard socket</li>
+                        <li>RAM type (DDR4/DDR5) must match motherboard</li>
+                        <li>PSU wattage must cover CPU + GPU power draw</li>
+                        <li>Case form factor must fit the motherboard size</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    const categories = ['cpu', 'gpu', 'ram', 'motherboard', 'storage', 'psu', 'case'];
+
+    function updateSummary() {
+        let total = 0;
+        let html = '';
+
+        categories.forEach(function(cat) {
+            // Find the select by matching the name attribute
+            const selects = document.querySelectorAll('select');
+            let select = null;
+            selects.forEach(function(s) {
+                if (s.name === cat + '_id' || s.name === cat.replace(' ','_') + '_id') {
+                    select = s;
+                }
+            });
+
+            if (select && select.value) {
+                const opt = select.options[select.selectedIndex];
+                const price = parseFloat(opt.dataset.price) || 0;
+                const name = opt.dataset.name || opt.text.split(' — ')[0];
+                total += price;
+                html += `
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="text-truncate me-2" style="max-width: 160px; color: #374151;">
+                            ${name}
+                        </span>
+                        <span class="text-nowrap fw-semibold">RM ${price.toFixed(2)}</span>
+                    </div>`;
+            }
+        });
+
+        const summaryList = document.getElementById('summaryList');
+        summaryList.innerHTML = html || '<p class="text-muted small text-center py-2">Select parts to see your cost summary</p>';
+        document.getElementById('totalCost').textContent = 'RM ' + total.toFixed(2);
+    }
+
+    // Run once on page load to populate if selections exist
+    updateSummary();
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit Part' if part else 'Add New Part' }} — MyPartPicker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1>
+            <i class="bi bi-{{ 'pencil' if part else 'plus-circle' }} me-2"></i>
+            {{ 'Edit Part' if part else 'Add New Part' }}
+        </h1>
+        <p>{{ 'Update the details for ' + part.name if part else 'Add a new component to the catalogue' }}</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-cpu me-2"></i>
+                    {{ 'Edit: ' + part.name if part else 'New Part Details' }}
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST"
+                          action="{{ url_for('admin.edit_part', part_id=part.id) if part else url_for('admin.add_part') }}">
+
+                        <!-- Basic Info -->
+                        <h6 class="fw-bold mb-3" style="color: var(--primary);">
+                            <i class="bi bi-info-circle me-1"></i> Basic Information
+                        </h6>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label">Part Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="name" required
+                                       value="{{ part.name if part else '' }}"
+                                       placeholder="e.g. AMD Ryzen 5 5600X">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Category <span class="text-danger">*</span></label>
+                                <select class="form-select" name="category" required
+                                        id="categorySelect" onchange="toggleCompatFields()">
+                                    <option value="">Select...</option>
+                                    {% for cat in categories %}
+                                    <option value="{{ cat }}"
+                                        {% if part and part.category == cat %}selected{% endif %}>
+                                        {{ cat }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Brand <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="brand" required
+                                       value="{{ part.brand if part else '' }}"
+                                       placeholder="e.g. AMD, Intel, ASUS">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Specifications</label>
+                                <input type="text" class="form-control" name="specs"
+                                       value="{{ part.specs if part else '' }}"
+                                       placeholder="e.g. 6 Cores, 3.7GHz, 65W TDP">
+                            </div>
+                        </div>
+
+                        <!-- Pricing -->
+                        <h6 class="fw-bold mb-3" style="color: var(--primary);">
+                            <i class="bi bi-tag me-1"></i> Pricing & Retailer
+                        </h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-5">
+                                <label class="form-label">Price (MYR) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">RM</span>
+                                    <input type="number" class="form-control" name="price"
+                                           step="0.01" min="0" required
+                                           value="{{ part.price if part else '' }}"
+                                           placeholder="0.00">
+                                </div>
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label">Retailer <span class="text-danger">*</span></label>
+                                <select class="form-select" name="retailer" required>
+                                    <option value="">Select retailer...</option>
+                                    {% for retailer in ['CZone', 'Harvey Norman', 'Shopee MY', 'Lazada MY', 'Other'] %}
+                                    <option value="{{ retailer }}"
+                                        {% if part and part.retailer == retailer %}selected{% endif %}>
+                                        {{ retailer }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Compatibility Fields -->
+                        <h6 class="fw-bold mb-1" style="color: var(--primary);">
+                            <i class="bi bi-puzzle me-1"></i> Compatibility Fields
+                        </h6>
+                        <p class="text-muted small mb-3">
+                            Fill in only the fields relevant to this part's category.
+                            These are used by the compatibility checker.
+                        </p>
+
+                        <div class="row g-3 mb-4">
+                            <!-- Socket (CPU, Motherboard) -->
+                            <div class="col-md-4 compat-field" id="field-socket">
+                                <label class="form-label">
+                                    Socket
+                                    <span class="text-muted small">(CPU, Motherboard)</span>
+                                </label>
+                                <select class="form-select" name="socket">
+                                    <option value="">None</option>
+                                    {% for socket in ['AM4', 'AM5', 'LGA1700', 'LGA1200', 'LGA2066'] %}
+                                    <option value="{{ socket }}"
+                                        {% if part and part.socket == socket %}selected{% endif %}>
+                                        {{ socket }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- RAM Type (RAM, Motherboard) -->
+                            <div class="col-md-4 compat-field" id="field-ram_type">
+                                <label class="form-label">
+                                    RAM Type
+                                    <span class="text-muted small">(RAM, Motherboard)</span>
+                                </label>
+                                <select class="form-select" name="ram_type">
+                                    <option value="">None</option>
+                                    {% for rt in ['DDR4', 'DDR5'] %}
+                                    <option value="{{ rt }}"
+                                        {% if part and part.ram_type == rt %}selected{% endif %}>
+                                        {{ rt }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Form Factor (Motherboard, Case) -->
+                            <div class="col-md-4 compat-field" id="field-form_factor">
+                                <label class="form-label">
+                                    Form Factor
+                                    <span class="text-muted small">(Motherboard, Case)</span>
+                                </label>
+                                <select class="form-select" name="form_factor">
+                                    <option value="">None</option>
+                                    {% for ff in ['ATX', 'mATX', 'ITX'] %}
+                                    <option value="{{ ff }}"
+                                        {% if part and part.form_factor == ff %}selected{% endif %}>
+                                        {{ ff }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- PSU Wattage -->
+                            <div class="col-md-6 compat-field" id="field-wattage">
+                                <label class="form-label">
+                                    Wattage Supplied (W)
+                                    <span class="text-muted small">(PSU only)</span>
+                                </label>
+                                <input type="number" class="form-control" name="wattage" min="0"
+                                       value="{{ part.wattage if part and part.wattage else '' }}"
+                                       placeholder="e.g. 650">
+                            </div>
+
+                            <!-- Power Draw (CPU, GPU) -->
+                            <div class="col-md-6 compat-field" id="field-power_draw">
+                                <label class="form-label">
+                                    Power Draw (W)
+                                    <span class="text-muted small">(CPU, GPU)</span>
+                                </label>
+                                <input type="number" class="form-control" name="power_draw" min="0"
+                                       value="{{ part.power_draw if part and part.power_draw else '' }}"
+                                       placeholder="e.g. 65">
+                            </div>
+                        </div>
+
+                        <!-- Form Buttons -->
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn btn-primary btn-lg flex-fill">
+                                <i class="bi bi-{{ 'check-circle' if part else 'plus-circle' }} me-2"></i>
+                                {{ 'Save Changes' if part else 'Add Part' }}
+                            </button>
+                            <a href="{{ url_for('admin.dashboard') }}"
+                               class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-x-lg me-1"></i> Cancel
+                            </a>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Highlight relevant fields based on selected category
+    const relevantFields = {
+        'CPU':          ['socket', 'power_draw'],
+        'GPU':          ['power_draw'],
+        'RAM':          ['ram_type'],
+        'Motherboard':  ['socket', 'ram_type', 'form_factor'],
+        'Storage':      [],
+        'PSU':          ['wattage'],
+        'Case':         ['form_factor'],
+    };
+
+    function toggleCompatFields() {
+        const cat = document.getElementById('categorySelect').value;
+        const relevant = relevantFields[cat] || [];
+
+        document.querySelectorAll('.compat-field').forEach(function(field) {
+            const fieldId = field.id.replace('field-', '');
+            if (relevant.includes(fieldId)) {
+                field.style.opacity = '1';
+                field.style.border = '2px solid var(--primary-light)';
+                field.style.borderRadius = '8px';
+                field.style.padding = '8px';
+            } else {
+                field.style.opacity = '0.45';
+                field.style.border = 'none';
+                field.style.padding = '0';
+            }
+        });
+    }
+
+    // Run on page load if editing an existing part
+    toggleCompatFields();
+</script>
+{% endblock %}
+{% endblock %}
