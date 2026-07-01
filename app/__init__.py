@@ -22,11 +22,11 @@ def create_app():
 
     # Uncomment as each member finishes their section:
     # from app.routes.parts import parts
-    # app.register_blueprint(parts)
-    # from app.routes.builds import builds
-    # app.register_blueprint(builds)
-    # from app.routes.admin import admin
-    # app.register_blueprint(admin)
+     #app.register_blueprint(parts)
+     #from app.routes.builds import builds
+     #app.register_blueprint(builds)
+     #from app.routes.admin import admin
+     #app.register_blueprint(admin)
 
     with app.app_context():
         db.create_all()
