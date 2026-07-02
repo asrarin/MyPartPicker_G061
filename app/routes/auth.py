@@ -7,6 +7,8 @@ from app.models import User
 
 auth = Blueprint('auth', __name__)
 
+
+# ── ADMIN DECORATOR ──────────────────────────────────────────────────────────
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -15,15 +17,19 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
+# ── REGISTER ─────────────────────────────────────────────────────────────────
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('auth.profile'))
+        return redirect(url_for('parts.catalogue'))
+
     if request.method == 'POST':
         username         = request.form.get('username', '').strip()
         email            = request.form.get('email', '').strip().lower()
         password         = request.form.get('password', '')
-        confirm_password = request.form.get('confirm_password', '')
+        confirm          = request.form.get('confirm_password', '')
+
         if not username or not email or not password:
             flash('All fields are required.', 'danger')
             return redirect(url_for('auth.register'))
@@ -33,7 +39,7 @@ def register():
         if len(password) < 6:
             flash('Password must be at least 6 characters.', 'danger')
             return redirect(url_for('auth.register'))
-        if password != confirm_password:
+        if password != confirm:
             flash('Passwords do not match.', 'danger')
             return redirect(url_for('auth.register'))
         if User.query.filter_by(email=email).first():
@@ -42,29 +48,40 @@ def register():
         if User.query.filter_by(username=username).first():
             flash('That username is already taken.', 'danger')
             return redirect(url_for('auth.register'))
-        hashed = generate_password_hash(password)
-        new_user = User(username=username, email=email, password=hashed)
-        db.session.add(new_user)
+
+        db.session.add(User(
+            username=username,
+            email=email,
+            password=generate_password_hash(password)
+))
         db.session.commit()
         flash('Account created! Please log in.', 'success')
         return redirect(url_for('auth.login'))
+
     return render_template('auth/register.html')
 
+
+# ── LOGIN ─────────────────────────────────────────────────────────────────────
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('auth.profile'))
+        return redirect(url_for('parts.catalogue'))
+
     if request.method == 'POST':
         email    = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
             login_user(user)
+            next_page = request.args.get('next')
             flash(f'Welcome back, {user.username}!', 'success')
-            return redirect(url_for('auth.profile'))
+            return redirect(next_page or url_for('parts.catalogue'))
         flash('Invalid email or password.', 'danger')
+
     return render_template('auth/login.html')
 
+
+# ── LOGOUT ────────────────────────────────────────────────────────────────────
 @auth.route('/logout')
 @login_required
 def logout():
@@ -72,6 +89,8 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('auth.login'))
 
+
+# ── PROFILE ───────────────────────────────────────────────────────────────────
 @auth.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
@@ -89,6 +108,73 @@ def profile():
         flash('Profile updated!', 'success')
     return render_template('auth/profile.html')
 
+
+# ── FORGOT PASSWORD ───────────────────────────────────────────────────────────
+@auth.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for('parts.catalogue'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        user  = User.query.filter_by(email=email).first()
+
+        # Always show the same message whether or not the email exists
+        # (prevents email enumeration attacks)
+        if user:
+            token = user.generate_reset_token()
+            db.session.commit()
+            reset_link = url_for('auth.reset_password', token=token, _external=True)
+            # In a real app you would EMAIL this link to the user.
+            # For this demo we display it directly on screen.
+            return render_template(
+                'auth/forgot_password.html',
+                reset_link=reset_link,
+                email=email,
+                link_generated=True
+            )
+
+        flash('If that email is registered, a reset link has been generated.', 'info')
+        return redirect(url_for('auth.forgot_password'))
+
+    return render_template('auth/forgot_password.html', link_generated=False)
+
+
+# ── RESET PASSWORD ────────────────────────────────────────────────────────────
+@auth.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('parts.catalogue'))
+
+    user = User.query.filter_by(reset_token=token).first()
+
+    if not user or not user.is_token_valid():
+        flash('This reset link is invalid or has expired. Please request a new one.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    if request.method == 'POST':
+        password         = request.form.get('password', '')
+        confirm          = request.form.get('confirm_password', '')
+
+        if len(password) < 6:
+            flash('Password must be at least 6 characters.', 'danger')
+            return redirect(url_for('auth.reset_password', token=token))
+
+        if password != confirm:
+            flash('Passwords do not match.', 'danger')
+            return redirect(url_for('auth.reset_password', token=token))
+
+        user.password = generate_password_hash(password)
+        user.clear_reset_token()
+        db.session.commit()
+
+        flash('Password reset successfully. Please log in.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/reset_password.html', token=token)
+
+
+# ── ERROR HANDLERS ────────────────────────────────────────────────────────────
 @auth.app_errorhandler(403)
 def forbidden(e):
     return render_template('errors/403.html'), 403
