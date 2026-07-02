@@ -43,10 +43,12 @@ def builder():
 
         if 'save' in request.form:
             build_name = request.form.get('build_name', '').strip() or 'My Build'
+            is_public  = 'is_public' in request.form
             new_build  = Build(
                 name          = build_name,
                 user_id       = current_user.id,
                 is_compatible = result['is_compatible'],
+                is_public     = is_public,
                 total_cost    = total_cost,
                 cpu_id         = sel['cpu'].id         if sel['cpu']         else None,
                 gpu_id         = sel['gpu'].id         if sel['gpu']         else None,
@@ -105,6 +107,7 @@ def edit_build(build_id):
 
         build.name          = request.form.get('build_name', '').strip() or build.name
         build.is_compatible = result['is_compatible']
+        build.is_public      = 'is_public' in request.form
         build.total_cost    = total_cost
         build.cpu_id         = sel['cpu'].id         if sel['cpu']         else None
         build.gpu_id         = sel['gpu'].id         if sel['gpu']         else None
@@ -144,3 +147,45 @@ def delete_build(build_id):
     db.session.commit()
     flash('Build deleted.', 'info')
     return redirect(url_for('builds.saved_builds'))
+
+
+# ── TOGGLE PUBLIC / PRIVATE ───────────────────────────────────────────────────
+@builds.route('/builds/toggle-public/<int:build_id>', methods=['POST'])
+@login_required
+def toggle_public(build_id):
+    build = Build.query.get_or_404(build_id)
+    if build.user_id != current_user.id:
+        flash('You do not have permission to modify this build.', 'danger')
+        return redirect(url_for('builds.saved_builds'))
+
+    build.is_public = not build.is_public
+    db.session.commit()
+
+    if build.is_public:
+        flash(f'"{build.name}" is now public and visible in the Gallery.', 'success')
+    else:
+        flash(f'"{build.name}" is now private.', 'info')
+
+    return redirect(url_for('builds.saved_builds'))
+
+
+# ── PUBLIC GALLERY ────────────────────────────────────────────────────────────
+@builds.route('/gallery')
+def gallery():
+    sort = request.args.get('sort', 'low')  # 'low' or 'high'
+
+    query = Build.query.filter_by(is_public=True, is_compatible=True)
+
+    if sort == 'high':
+        query = query.order_by(Build.total_cost.desc())
+    else:
+        sort = 'low'
+        query = query.order_by(Build.total_cost.asc())
+
+    public_builds = query.all()
+
+    return render_template(
+        'builds/gallery.html',
+        builds=public_builds,
+        sort=sort,
+    )
