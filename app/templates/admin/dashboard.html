@@ -1,58 +1,77 @@
-{% extends 'base.html' %}
-{% block title %}Admin Dashboard — MyPartPicker{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% block title %}Admin Dashboard — MyPartPicker{%
+endblock %} {% block content %}
 <div class="page-header">
     <div class="container d-flex justify-content-between align-items-center">
         <div>
             <h1><i class="bi bi-shield-lock me-2"></i> Admin Dashboard</h1>
             <p>Manage parts catalogue and user accounts</p>
         </div>
-        <a href="{{ url_for('admin.add_part') }}" class="btn btn-warning fw-semibold">
+        <a
+            href="{{ url_for('admin.add_part') }}"
+            class="btn btn-warning fw-semibold"
+        >
             <i class="bi bi-plus-lg me-2"></i> Add New Part
         </a>
     </div>
 </div>
 
 <div class="container">
-
     <!-- Stats Row -->
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-md-3">
             <div class="card text-center p-3">
-                <i class="bi bi-cpu" style="font-size: 2rem; color: var(--primary);"></i>
+                <i
+                    class="bi bi-cpu"
+                    style="font-size: 2rem; color: var(--primary)"
+                ></i>
                 <h4 class="fw-bold mt-1 mb-0">{{ parts|length }}</h4>
                 <p class="text-muted small mb-0">Total Parts</p>
             </div>
         </div>
         <div class="col-sm-6 col-md-3">
             <div class="card text-center p-3">
-                <i class="bi bi-people" style="font-size: 2rem; color: #16a34a;"></i>
+                <i
+                    class="bi bi-people"
+                    style="font-size: 2rem; color: #16a34a"
+                ></i>
                 <h4 class="fw-bold mt-1 mb-0">{{ users|length }}</h4>
                 <p class="text-muted small mb-0">Registered Users</p>
             </div>
         </div>
         <div class="col-sm-6 col-md-3">
             <div class="card text-center p-3">
-                <i class="bi bi-grid" style="font-size: 2rem; color: #d97706;"></i>
+                <i
+                    class="bi bi-grid"
+                    style="font-size: 2rem; color: #d97706"
+                ></i>
                 <h4 class="fw-bold mt-1 mb-0">7</h4>
                 <p class="text-muted small mb-0">Categories</p>
             </div>
         </div>
         <div class="col-sm-6 col-md-3">
             <div class="card text-center p-3">
-                <i class="bi bi-shop" style="font-size: 2rem; color: #7c3aed;"></i>
-                <h4 class="fw-bold mt-1 mb-0">2</h4>
-                <p class="text-muted small mb-0">Retailers Tracked</p>
+                <i
+                    class="bi bi-cart-check"
+                    style="font-size: 2rem; color: #7c3aed"
+                ></i>
+                <h4 class="fw-bold mt-1 mb-0">
+                    {{ parts|selectattr('buy_url')|list|length }}
+                </h4>
+                <p class="text-muted small mb-0">Parts with Buy Link</p>
             </div>
         </div>
     </div>
 
     <!-- Parts Table -->
     <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
+        <div
+            class="card-header d-flex justify-content-between align-items-center"
+        >
             <span><i class="bi bi-table me-2"></i> Parts Catalogue</span>
-            <a href="{{ url_for('admin.add_part') }}" class="btn btn-sm btn-warning">
+            <a
+                href="{{ url_for('admin.add_part') }}"
+                class="btn btn-sm btn-warning"
+            >
                 <i class="bi bi-plus me-1"></i> Add Part
             </a>
         </div>
@@ -60,38 +79,67 @@
             {% if parts %}
             <div class="table-responsive">
                 <table class="table table-hover table-striped mb-0">
-                    <thead style="background-color: #f0f4f9;">
+                    <thead style="background-color: #f0f4f9">
                         <tr>
-                            <th style="padding: 0.85rem 1rem;">Category</th>
+                            <th style="padding: 0.85rem 1rem">Category</th>
                             <th>Part Name</th>
                             <th>Brand</th>
                             <th>Price (MYR)</th>
                             <th>Retailer</th>
+                            <th>Buy link</th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for part in parts %}
                         <tr>
-                            <td style="padding: 0.75rem 1rem;">
-                                <span class="badge-category">{{ part.category }}</span>
+                            <td style="padding: 0.75rem 1rem">
+                                <span class="badge-category"
+                                    >{{ part.category }}</span
+                                >
                             </td>
                             <td class="fw-semibold">{{ part.name }}</td>
                             <td class="text-muted">{{ part.brand }}</td>
-                            <td class="price-tag">RM {{ '%.2f'|format(part.price) }}</td>
-                            <td class="text-muted small">
-                                <i class="bi bi-shop me-1"></i>{{ part.retailer }}
+                            <td class="price-tag">
+                                RM {{ '%.2f'|format(part.price) }}
                             </td>
+                            <td class="text-muted small">
+                                <i class="bi bi-shop me-1"></i>{{ part.retailer
+                                }}
+                            </td>
+
+                            <td>
+                                {% if part.buy_url %}
+                                <a
+                                    href="{{ part.buy_url }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="badge bg-success text-decoration-none"
+                                >
+                                    <i class="bi bi-cart me-1"></i>Link
+                                </a>
+                                {% else %}
+                                <span class="badge bg-secondary">No link</span>
+                                {% endif %}
+                            </td>
+
                             <td class="text-center">
-                                <a href="{{ url_for('admin.edit_part', part_id=part.id) }}"
-                                   class="btn btn-sm btn-outline-primary me-1">
+                                <a
+                                    href="{{ url_for('admin.edit_part', part_id=part.id) }}"
+                                    class="btn btn-sm btn-outline-primary me-1"
+                                >
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST"
-                                      action="{{ url_for('admin.delete_part', part_id=part.id) }}"
-                                      style="display:inline;"
-                                      onsubmit="return confirm('Delete {{ part.name }}? This cannot be undone.');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <form
+                                    method="POST"
+                                    action="{{ url_for('admin.delete_part', part_id=part.id) }}"
+                                    style="display: inline"
+                                    onsubmit="return confirm('Delete {{ part.name }}? This cannot be undone.');"
+                                >
+                                    <button
+                                        type="submit"
+                                        class="btn btn-sm btn-outline-danger"
+                                    >
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
@@ -103,7 +151,10 @@
             </div>
             {% else %}
             <div class="empty-state py-4">
-                <i class="bi bi-cpu d-block mb-2" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                <i
+                    class="bi bi-cpu d-block mb-2"
+                    style="font-size: 2.5rem; opacity: 0.3"
+                ></i>
                 <p class="mb-0 text-muted">No parts in the catalogue yet.</p>
             </div>
             {% endif %}
@@ -119,9 +170,9 @@
             {% if users %}
             <div class="table-responsive">
                 <table class="table table-hover table-striped mb-0">
-                    <thead style="background-color: #f0f4f9;">
+                    <thead style="background-color: #f0f4f9">
                         <tr>
-                            <th style="padding: 0.85rem 1rem;">ID</th>
+                            <th style="padding: 0.85rem 1rem">ID</th>
                             <th>Username</th>
                             <th>Email</th>
                             <th>Role</th>
@@ -130,7 +181,9 @@
                     <tbody>
                         {% for user in users %}
                         <tr>
-                            <td style="padding: 0.75rem 1rem; color: #9ca3af;">{{ user.id }}</td>
+                            <td style="padding: 0.75rem 1rem; color: #9ca3af">
+                                {{ user.id }}
+                            </td>
                             <td class="fw-semibold">{{ user.username }}</td>
                             <td class="text-muted">{{ user.email }}</td>
                             <td>
@@ -156,6 +209,5 @@
             {% endif %}
         </div>
     </div>
-
 </div>
 {% endblock %}
