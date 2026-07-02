@@ -1,11 +1,20 @@
+import os
 from functools import wraps
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from app import db
 from app.models import User
 
 auth = Blueprint('auth', __name__)
+
+
+def allowed_file(filename):
+    if '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in current_app.config['ALLOWED_EXTENSIONS']
 
 
 # ── ADMIN DECORATOR ──────────────────────────────────────────────────────────
@@ -53,7 +62,7 @@ def register():
             username=username,
             email=email,
             password=generate_password_hash(password)
-))
+        ))
         db.session.commit()
         flash('Account created! Please log in.', 'success')
         return redirect(url_for('auth.login'))
@@ -103,10 +112,47 @@ def profile():
         if existing and existing.id != current_user.id:
             flash('That username is already taken.', 'danger')
             return redirect(url_for('auth.profile'))
+
+        # ── Handle profile picture upload ──
+        file = request.files.get('profile_picture')
+        if file and file.filename:
+            if not allowed_file(file.filename):
+                flash('Invalid file type. Use PNG, JPG, JPEG, GIF, or WEBP.', 'danger')
+                return redirect(url_for('auth.profile'))
+
+            ext = file.filename.rsplit('.', 1)[1].lower()
+            new_filename = secure_filename(f'user_{current_user.id}.{ext}')
+            upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], new_filename)
+
+            # Remove old picture if it had a different extension
+            if current_user.profile_picture and current_user.profile_picture != new_filename:
+                old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], current_user.profile_picture)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+
+            file.save(upload_path)
+            current_user.profile_picture = new_filename
+
         current_user.username = username
         db.session.commit()
         flash('Profile updated!', 'success')
+        return redirect(url_for('auth.profile'))
+
     return render_template('auth/profile.html')
+
+
+# ── REMOVE PROFILE PICTURE ────────────────────────────────────────────────────
+@auth.route('/profile/remove-picture', methods=['POST'])
+@login_required
+def remove_picture():
+    if current_user.profile_picture:
+        old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], current_user.profile_picture)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+        current_user.profile_picture = None
+        db.session.commit()
+        flash('Profile picture removed.', 'info')
+    return redirect(url_for('auth.profile'))
 
 
 # ── FORGOT PASSWORD ───────────────────────────────────────────────────────────
@@ -119,14 +165,11 @@ def forgot_password():
         email = request.form.get('email', '').strip().lower()
         user  = User.query.filter_by(email=email).first()
 
-        # Always show the same message whether or not the email exists
-        # (prevents email enumeration attacks)
         if user:
             token = user.generate_reset_token()
             db.session.commit()
             reset_link = url_for('auth.reset_password', token=token, _external=True)
-            # In a real app you would EMAIL this link to the user.
-            # For this demo we display it directly on screen.
+            
             return render_template(
                 'auth/forgot_password.html',
                 reset_link=reset_link,
