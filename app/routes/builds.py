@@ -189,3 +189,16 @@ def gallery():
         builds=public_builds,
         sort=sort,
     )
+
+
+# ── VIEW GALLERY BUILD (read-only) ────────────────────────────────────────────
+@builds.route('/gallery/view/<int:build_id>')
+def view_build(build_id):
+    build = Build.query.get_or_404(build_id)
+
+    # Only allow viewing if the build is public — 404 otherwise
+    if not build.is_public:
+        from flask import abort
+        abort(404)
+
+    return render_template('builds/gallery_view.html', build=build)
