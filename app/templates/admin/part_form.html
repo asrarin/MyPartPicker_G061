@@ -91,7 +91,24 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                        </div>
+                            <div class="row g-3 mb-4">
+                              <div class="col-12">
+                                <label class="form-label">
+                                  <i class="bi bi-cart me-1"></i>Purchase Link
+                                  <span class="text-muted small fw-normal ms-1">(optional but recommended)</span>
+                                </label>
+                                <div class="input-group">
+                                  <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                                  <input type="url" class="form-control" name="buy_url"
+                                         value="{{ part.buy_url if part and part.buy_url else '' }}"
+                                         placeholder="https://www.lazada.com.my/products/... or https://shopee.com.my/...">
+                                </div>
+                                <div class="form-text">
+                                  Paste the direct product URL from Shopee, Lazada, CZone, or Harvey Norman.
+                                  This becomes the "Buy Now" button on the part detail page.
+                                </div>
+                              </div>
+                            </div>
 
                         <!-- Compatibility Fields -->
                         <h6 class="fw-bold mb-1" style="color: var(--primary);">
