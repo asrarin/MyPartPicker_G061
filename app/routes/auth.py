@@ -166,10 +166,9 @@ def forgot_password():
         user  = User.query.filter_by(email=email).first()
 
         if user:
-            token = user.generate_reset_token()
+            token      = user.generate_reset_token()
             db.session.commit()
             reset_link = url_for('auth.reset_password', token=token, _external=True)
-            
             return render_template(
                 'auth/forgot_password.html',
                 reset_link=reset_link,
@@ -196,8 +195,8 @@ def reset_password(token):
         return redirect(url_for('auth.forgot_password'))
 
     if request.method == 'POST':
-        password         = request.form.get('password', '')
-        confirm          = request.form.get('confirm_password', '')
+        password = request.form.get('password', '')
+        confirm  = request.form.get('confirm_password', '')
 
         if len(password) < 6:
             flash('Password must be at least 6 characters.', 'danger')
@@ -221,6 +220,7 @@ def reset_password(token):
 @auth.app_errorhandler(403)
 def forbidden(e):
     return render_template('errors/403.html'), 403
+
 
 @auth.app_errorhandler(404)
 def not_found(e):
