@@ -19,17 +19,12 @@
                     <i class="bi bi-list-check me-2"></i> Select Your Components
                 </div>
                 <div class="card-body p-4">
-                    <form method="POST" action="{{ url_for('builds.builder') }}" id="builderForm">
+                    <form method="POST"
+                          action="{% if editing %}{{ url_for('builds.edit_build', build_id=build.id) }}{% else %}{{ url_for('builds.builder') }}{% endif %}"
+                          id="builderForm">
 
-                        {% set icons = {
-                            'CPU': 'cpu',
-                            'GPU': 'gpu-card',
-                            'RAM': 'memory',
-                            'Motherboard': 'motherboard',
-                            'Storage': 'device-hdd',
-                            'PSU': 'lightning-charge',
-                            'Case': 'box'
-                        } %}
+                        {% set cat_icons = {'CPU':'cpu','GPU':'gpu-card','RAM':'memory','Motherboard':'motherboard','Storage':'device-hdd','PSU':'lightning-charge','Case':'box'} %}
+                        {% set cat_keys  = {'CPU':'cpu','GPU':'gpu','RAM':'ram','Motherboard':'motherboard','Storage':'storage','PSU':'psu','Case':'case'} %}
 
                         {% for category, part_list in parts_by_category.items() %}
                         <div class="mb-4">
@@ -38,16 +33,13 @@
                                    style="color: var(--primary); font-size: 1.1rem;"></i>
                                 {{ category }}
                             </label>
-                            <select class="form-select" name="{{ category.lower().replace(' ','_') }}_id"
-                                    onchange="updateSummary()">
+                            <select class="form-select" name="{{ cat_keys[category] }}_id" onchange="updateSummary()">
                                 <option value="">— Select a {{ category }} —</option>
                                 {% for part in part_list %}
                                 <option value="{{ part.id }}"
-                                    data-price="{{ part.price }}"
-                                    data-name="{{ part.name }}"
-                                    {% if selections is defined and selections[category.lower()] and selections[category.lower()].id == part.id %}
-                                        selected
-                                    {% endif %}>
+                                        data-price="{{ part.price }}"
+                                        data-name="{{ part.name }}"
+                                        {% if selections is defined and selections[cat_keys[category]] and selections[cat_keys[category]].id == part.id %}selected{% endif %}>
                                     {{ part.name }} — RM {{ '%.2f'|format(part.price) }} ({{ part.retailer }})
                                 </option>
                                 {% endfor %}
@@ -62,8 +54,24 @@
                             </label>
                             <input type="text" class="form-control" name="build_name"
                                    placeholder='e.g. "Budget Gaming Rig" or "Study PC"'
-                                   value="My Build">
+                                   value="{% if editing %}{{ build.name }}{% else %}My Build{% endif %}">
                             <div class="form-text">Give your build a name before saving.</div>
+                        </div>
+
+                        <div class="mb-4 form-check ps-0">
+                          <div class="d-flex align-items-start gap-2">
+                            <input type="checkbox" class="form-check-input mt-1" id="isPublic" name="is_public"
+                                   {% if editing and build.is_public %}checked{% endif %}>
+                            <label class="form-check-label" for="isPublic">
+                              <span class="fw-semibold"><i class="bi bi-globe me-1"></i>Publish to Gallery</span>
+                              <br>
+                              <small class="text-muted">
+                                Other students can browse this build in the
+                                <a href="{{ url_for('builds.gallery') }}" target="_blank">public Gallery</a>.
+                                Only compatible builds are shown.
+                              </small>
+                            </label>
+                          </div>
                         </div>
 
                         <div class="d-flex gap-2">
