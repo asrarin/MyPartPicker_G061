@@ -13,7 +13,52 @@
             <div class="card mb-4">
                 <div class="card-header"><i class="bi bi-person me-2"></i>Account Details</div>
                 <div class="card-body p-4">
-                    <form method="POST" action="{{ url_for('auth.profile') }}">
+                    <form method="POST" action="{{ url_for('auth.profile') }}" enctype="multipart/form-data">
+
+                        <!-- PROFILE PICTURE  -->
+
+                        <div class="text-center mb-4">
+                          <div class="position-relative d-inline-block">
+                            {% if current_user.profile_picture %}
+                            <img id="avatarPreview"
+                                 src="{{ url_for('static', filename='uploads/profile_pics/' + current_user.profile_picture) }}"
+                                 alt="Profile picture"
+                                 class="rounded-circle"
+                                 style="width:120px;height:120px;object-fit:cover;border:4px solid var(--primary-light);">
+                            {% else %}
+                            <div id="avatarPlaceholder"
+                                 class="rounded-circle d-flex align-items-center justify-content-center"
+                                 style="width:120px;height:120px;background:#e5e7eb;border:4px solid var(--primary-light);">
+                              <i class="bi bi-person-fill" style="font-size:3.5rem;color:#9ca3af;"></i>
+                            </div>
+                            <img id="avatarPreview" src="" alt="Preview" class="rounded-circle d-none"
+                                 style="width:120px;height:120px;object-fit:cover;border:4px solid var(--primary-light);">
+                            {% endif %}
+            
+                            <label for="profilePictureInput"
+                                   class="btn btn-primary btn-sm rounded-circle position-absolute"
+                                   style="bottom:0; right:0; width:36px; height:36px; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                              <i class="bi bi-camera-fill"></i>
+                            </label>
+                          </div>
+            
+                          <input type="file" id="profilePictureInput" name="profile_picture"
+                                 accept=".png,.jpg,.jpeg,.gif,.webp" class="d-none" onchange="previewAvatar(event)">
+            
+                          <div class="mt-2">
+                            <small class="text-muted">Click the camera icon to change your photo</small><br>
+                            <small class="text-muted">PNG, JPG, GIF, or WEBP — max 2MB</small>
+                          </div>
+            
+                          {% if current_user.profile_picture %}
+                          <div class="mt-2">
+                            <button type="submit" form="removePictureForm" class="btn btn-sm btn-outline-danger">
+                              <i class="bi bi-trash me-1"></i>Remove Picture
+                            </button>
+                          </div>
+                          {% endif %}
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label" for="username">Username</label>
                             <div class="input-group">
@@ -43,18 +88,63 @@
                             <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-2"></i>Save Changes</button>
                         </div>
                     </form>
+                    <form id="removePictureForm" method="POST" action="{{ url_for('auth.remove_picture') }}" class="d-none"></form>
                 </div>
             </div>
             <div class="card">
                 <div class="card-header"><i class="bi bi-lightning me-2"></i>Quick Links</div>
                 <div class="list-group list-group-flush" style="border-radius:0 0 10px 10px;">
-                    <a href="{{ url_for('auth.logout') }}" class="list-group-item list-group-item-action d-flex align-items-center text-danger">
-                        <i class="bi bi-box-arrow-right me-3"></i><span>Log Out</span>
-                        <i class="bi bi-chevron-right ms-auto"></i>
-                    </a>
+                  <a href="{{ url_for('builds.saved_builds') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                    <i class="bi bi-bookmark me-3" style="color:var(--primary);"></i>
+                    <span>My Saved Builds</span><i class="bi bi-chevron-right ms-auto text-muted"></i>
+                  </a>
+                  <a href="{{ url_for('builds.builder') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                    <i class="bi bi-pc-display me-3" style="color:var(--primary);"></i>
+                    <span>Create a New Build</span><i class="bi bi-chevron-right ms-auto text-muted"></i>
+                  </a>
+                  <a href="{{ url_for('parts.catalogue') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                    <i class="bi bi-cpu me-3" style="color:var(--primary);"></i>
+                    <span>Browse Parts Catalogue</span><i class="bi bi-chevron-right ms-auto text-muted"></i>
+                  </a>
+                  {% if current_user.is_admin %}
+                  <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                    <i class="bi bi-shield-lock me-3" style="color:#d97706;"></i>
+                    <span>Admin Panel</span><i class="bi bi-chevron-right ms-auto text-muted"></i>
+                  </a>
+                  {% endif %}
+                  <a href="{{ url_for('auth.logout') }}" class="list-group-item list-group-item-action d-flex align-items-center text-danger">
+                    <i class="bi bi-box-arrow-right me-3"></i><span>Log Out</span>
+                    <i class="bi bi-chevron-right ms-auto"></i>
+                  </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+
+{% block extra_js %}
+<script>
+  function previewAvatar(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File is too large. Maximum size is 2MB.');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const preview     = document.getElementById('avatarPreview');
+      const placeholder = document.getElementById('avatarPlaceholder');
+      preview.src = e.target.result;
+      preview.classList.remove('d-none');
+      if (placeholder) placeholder.classList.add('d-none');
+    };
+    reader.readAsDataURL(file);
+  }
+</script>
+{% endblock %}
 {% endblock %}
