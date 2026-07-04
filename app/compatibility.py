@@ -1,8 +1,4 @@
-"""
-compatibility.py
-Pure Python — no Flask dependency.
-Pass Part objects (or None) and receive a result dict.
-"""
+
 
 
 def check_compatibility(cpu, gpu, ram, motherboard, storage, psu, case):
